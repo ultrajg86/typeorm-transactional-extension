@@ -293,6 +293,7 @@ Registers a callback to execute after a transaction completes.
 
 ## Custom Extensions
 
+
 This library also provides custom extensions for TypeORM's `Repository` to simplify common database operations. These extensions include:
 
 ### Extended Repository Methods
@@ -305,6 +306,12 @@ This library also provides custom extensions for TypeORM's `Repository` to simpl
 
 3. **`deleteOrFail`**  
    Deletes an entity and throws an error if no rows are affected.
+
+4. **`updateAndReturn`**  
+   Updates an entity and returns the updated entity. Throws an error if no rows are affected or the entity is not found.
+
+5. **`deleteAndReturnOld`**  
+   Deletes an entity and returns the entity as it was before deletion. Throws an error if no rows are affected or the entity is not found.
 
 ### Usage
 
@@ -327,8 +334,16 @@ export class MyService {
     await this.repository.updateOrFail({ id }, data);
   }
 
+  async updateAndGet(id: number, data: Partial<MyEntity>): Promise<MyEntity> {
+    return this.repository.updateAndReturn({ id }, data);
+  }
+
   async deleteEntity(id: number): Promise<void> {
     await this.repository.deleteOrFail({ id });
+  }
+
+  async deleteAndGetOld(id: number): Promise<MyEntity> {
+    return this.repository.deleteAndReturnOld({ id });
   }
 }
 ```
@@ -336,7 +351,6 @@ export class MyService {
 ### Method Details
 
 #### `insertOrFail`
-
 Inserts an entity and ensures that the operation returns identifiers. If no identifiers are returned, an error is thrown.
 
 ```typescript
@@ -344,7 +358,6 @@ repository.insertOrFail(entity, 'Custom error message if insert fails');
 ```
 
 #### `updateOrFail`
-
 Updates an entity based on the given criteria. If no rows are affected, an error is thrown.
 
 ```typescript
@@ -352,13 +365,26 @@ repository.updateOrFail(criteria, partialEntity, 'Custom error message if update
 ```
 
 #### `deleteOrFail`
-
 Deletes an entity based on the given criteria. If no rows are affected, an error is thrown.
 
 ```typescript
 repository.deleteOrFail(criteria, 'Custom error message if delete fails');
 ```
 
----
+#### `updateAndReturn`
+Updates an entity and returns the updated entity. Throws an error if no rows are affected or the entity is not found.
+
+```typescript
+const updated = await repository.updateAndReturn({ id }, { value: 'new' });
+```
+
+#### `deleteAndReturnOld`
+Deletes an entity and returns the entity as it was before deletion. Throws an error if no rows are affected or the entity is not found.
+
+```typescript
+const old = await repository.deleteAndReturnOld({ id });
+```
+
+----
 
 For more details, refer to the [API Documentation](#api-reference).
