@@ -6,7 +6,6 @@ import { initializeTransactionalContext } from '../src';
 import { addTransactionalDataSource } from '../src';
 import { runOnTransactionCommit, runOnTransactionRollback } from '../src/hooks';
 
-
 @Entity()
 class TestEntity {
   @PrimaryGeneratedColumn()
@@ -41,7 +40,7 @@ describe('typeorm-transactional-extension', () => {
     class Service {
       constructor(private repo: Repository<TestEntity>) {}
       @Transactional()
-  async create(value: string) {
+      async create(value: string) {
         const entity = this.repo.create({ value });
         return this.repo.save(entity);
       }
@@ -57,7 +56,7 @@ describe('typeorm-transactional-extension', () => {
     class Service {
       constructor(private repo: Repository<TestEntity>) {}
       @Transactional()
-  async createAndFail(value: string) {
+      async createAndFail(value: string) {
         const entity = this.repo.create({ value });
         await this.repo.save(entity);
         throw new Error('fail');
@@ -76,9 +75,13 @@ describe('typeorm-transactional-extension', () => {
     class Service {
       constructor(private repo: Repository<TestEntity>) {}
       @Transactional()
-  async createWithHooks(value: string, shouldFail = false) {
-        runOnTransactionCommit(() => { commitCalled = true; });
-        runOnTransactionRollback(() => { rollbackCalled = true; });
+      async createWithHooks(value: string, shouldFail = false) {
+        runOnTransactionCommit(() => {
+          commitCalled = true;
+        });
+        runOnTransactionRollback(() => {
+          rollbackCalled = true;
+        });
         const entity = this.repo.create({ value });
         await this.repo.save(entity);
         if (shouldFail) throw new Error('fail');
@@ -109,9 +112,28 @@ describe('typeorm-transactional-extension', () => {
   it('should succeed on insertOrFail, updateOrFail, deleteOrFail', async () => {
     const entity = await repository.insertOrFail({ value: 'test' });
     expect(entity).toHaveProperty('id');
-    const [updateResult, affected] = await repository.updateOrFail({ id: entity.id }, { value: 'updated' });
+    const [updateResult, affected] = await repository.updateOrFail(
+      { id: entity.id },
+      { value: 'updated' },
+    );
     expect(affected).toBe(1);
     const [deleteResult, delAffected] = await repository.deleteOrFail({ id: entity.id });
     expect(delAffected).toBe(1);
+  });
+
+  it('should update and return the updated entity', async () => {
+    const entity = await repository.insertOrFail({ value: 'update-and-return' });
+    const updated = await repository.updateAndReturn({ id: entity.id }, { value: 'changed!' });
+    expect(updated.id).toBe(entity.id);
+    expect(updated.value).toBe('changed!');
+  });
+
+  it('should delete and return the old entity', async () => {
+    const entity = await repository.insertOrFail({ value: 'delete-and-return' });
+    const old = await repository.deleteAndReturnOld({ id: entity.id });
+    expect(old.id).toBe(entity.id);
+    expect(old.value).toBe('delete-and-return');
+    const found = await repository.findOneBy({ id: entity.id });
+    expect(found).toBeNull();
   });
 });

@@ -39,8 +39,83 @@ declare module 'typeorm' {
         | FindOptionsWhere<Entity>,
       message?: string,
     ): Promise<[DeleteResult, number]>;
+    updateAndReturn(
+      criteria:
+        | string
+        | string[]
+        | number
+        | number[]
+        | Date
+        | Date[]
+        | ObjectId
+        | ObjectId[]
+        | FindOptionsWhere<Entity>,
+      partialEntity: QueryDeepPartialEntity<Entity>,
+      message?: string,
+    ): Promise<Entity>;
+    deleteAndReturnOld(
+      criteria:
+        | string
+        | string[]
+        | number
+        | number[]
+        | Date
+        | Date[]
+        | ObjectId
+        | ObjectId[]
+        | FindOptionsWhere<Entity>,
+      message?: string,
+    ): Promise<Entity>;
   }
 }
+Repository.prototype.updateAndReturn = async function <Entity extends ObjectLiteral>(
+  this: Repository<Entity>,
+  criteria:
+    | string
+    | string[]
+    | number
+    | number[]
+    | Date
+    | Date[]
+    | ObjectId
+    | ObjectId[]
+    | FindOptionsWhere<Entity>,
+  partialEntity: QueryDeepPartialEntity<Entity>,
+  message = 'Update operation failed: No rows were affected.',
+): Promise<Entity> {
+  const before = await this.findOne({ where: criteria as any });
+  if (!before) throw new Error('Entity not found for update.');
+  const result: UpdateResult = await this.update(criteria, partialEntity);
+  if (result.affected === 0 || result.affected === undefined) {
+    throw new Error(message);
+  }
+  const after = await this.findOne({ where: criteria as any });
+  if (!after) throw new Error('Entity not found after update.');
+  return after;
+};
+
+Repository.prototype.deleteAndReturnOld = async function <Entity extends ObjectLiteral>(
+  this: Repository<Entity>,
+  criteria:
+    | string
+    | string[]
+    | number
+    | number[]
+    | Date
+    | Date[]
+    | ObjectId
+    | ObjectId[]
+    | FindOptionsWhere<Entity>,
+  message = 'Delete operation failed: No rows were affected.',
+): Promise<Entity> {
+  const before = await this.findOne({ where: criteria as any });
+  if (!before) throw new Error('Entity not found for delete.');
+  const result: DeleteResult = await this.delete(criteria);
+  if (result.affected === 0 || result.affected === null || result.affected === undefined) {
+    throw new Error(message);
+  }
+  return before;
+};
 
 Repository.prototype.insertOrFail = async function <Entity extends ObjectLiteral>(
   this: Repository<Entity>,
